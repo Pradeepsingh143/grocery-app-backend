@@ -21,7 +21,7 @@ export const getCart = asyncHandler(async (req, res) => {
   });
 
   if (!cart) {
-    new CustomError("cart not found", 404);
+   throw new CustomError("cart not found", 404);
   }
 
   res.status(200).json({
