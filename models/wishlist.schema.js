@@ -4,16 +4,18 @@ const { Schema, model } = mongoose;
 
 const wishlistSchema = Schema(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
       required: true,
     },
     items: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "product",
-        required: true,
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "product",
+          required: true,
+        },
       },
     ],
   },
@@ -22,4 +24,4 @@ const wishlistSchema = Schema(
   }
 );
 
-export default model("wishlist", wishlistSchema)
+export default model("wishlist", wishlistSchema);
