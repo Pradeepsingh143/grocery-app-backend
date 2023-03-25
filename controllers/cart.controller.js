@@ -11,7 +11,7 @@ import CustomError from "../utils/customError.js";
  ***********************************************************/
 export const getCart = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const cart = await Cart.find({ userId: userId }).populate({
+  const cart = await Cart.findOne({ userId: userId }).populate({
     path: "items.productId",
     select: "name price shortDescription previewImage collectionId",
     populate: {
