@@ -2,20 +2,28 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
-const reviewSchema = Schema(
+const productReviewSchema = Schema(
   {
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: "product",
+      required: true,
+    },
     user: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "user",
       require: true,
     },
     rating: {
       type: Number,
       required: true,
+      min: 1,
+      max: 5
     },
-    comment: {
+    review: {
       type: String,
       required: true,
+      trim: true
     },
   },
   {
@@ -23,4 +31,4 @@ const reviewSchema = Schema(
   }
 );
 
-export default model("review", reviewSchema);
+export default model("review", productReviewSchema);
