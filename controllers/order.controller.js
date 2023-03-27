@@ -18,7 +18,6 @@ import mailHelper from "../utils/mailHelper.js";
  * @description Creates a order with different payment options
  * @returns Order "order created successfully"
  *********************************************************/
-
 export const createOrder = asynHandler(async (req, res) => {
   const userId = req.user._id;
   const userEmail = req.user.email;
@@ -68,42 +67,43 @@ export const createOrder = asynHandler(async (req, res) => {
         coupon: coupon,
       });
 
-      await order.populate('product.productId', 'name price');
+      await order.populate("product.productId", "name price");
 
       const date = new Date(order.createdAt);
       const orderCreatedDate = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()} :: ${date.getHours()}:${date.getSeconds()}`;
       const emailText = `
-<html>
-<head>
-  <style>
-    .product {
-      font-weight: bold;
-      color: #333;
-    }
-    .subtotal {
-      color: #666;
-    }
-    .total {
-      font-size: 18px;
-      font-weight: bold;
-      color: #333;
-    }
-  </style>
-</head>
-<body>
-<div>
-Dear ${userName},<br>
-
+      <html>
+      <head>
+        <style>
+          .product {
+            font-weight: bold;
+            color: #333;
+          }
+          .subtotal {
+            color: #666;
+          }
+          .total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+          }
+        </style>
+      </head>
+      <body>
+      <div>
+      Dear ${userName},<br>
       <p>Thank you for placing your order with us! We are pleased to inform you that your order has been successfully placed with the following details:<p><br><br>
 
       <span><strong>Order ID:</strong><span> ${order.orderId}<br>
       <span><strong>Order Date:</strong><span> ${orderCreatedDate}<br>
       <p>Your order details:</p>
-      ${order.product.map(item => `
+      ${order.product.map(
+        (item) => `
       <ul>
         <li class="product">${item.productId.name} - ${item.quantity} x ${item.productId.price} </li><br>
       </ul>
-      `)}
+      `
+      )}
       <br>
       <span>Order Total Price =<span> <strong>${order.totalPrice}</strong>
       <p>Your order will be processed and shipped as soon as possible.<br> We will send you an email with the tracking details once your order has been shipped.</p>
@@ -115,8 +115,8 @@ Dear ${userName},<br>
       Best regards,
       igntieshark
       </div>
-</body>
-</html>
+      </body>
+      </html>
       `;
       if (order) {
         await mailHelper({
@@ -193,8 +193,103 @@ Dear ${userName},<br>
 
 /**********************************************************
  * @CANCEL_ORDER
- * @route https://localhost:5000/api/order/cancel
- * @description Controller used for creating order
- * @description Creates a order with different payment options
- * @returns Order "order created successfully"
+ * @route https://localhost:5000/api/order/cancel/:orderId
+ * @description Controller used for cancel order
+ * @description cancel a order based on orderId
+ * @returns Order "order cancelled"
  *********************************************************/
+export const cancelOrder = asynHandler(async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!orderId) {
+    throw new CustomError("Please provide orderId", 400);
+  }
+
+  const order = await Order.findOneAndUpdate(
+    orderId,
+    { orderStatus: OrderStatus.CANCELLED },
+    { new: true }
+  );
+  if (!order) {
+    throw new CustomError("something went wrong", 400);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Order cancelled",
+    order,
+  });
+});
+
+/**********************************************************
+ * @GET_USER_ORDERS_LIST
+ * @route https://localhost:5000/api/order/user
+ * @description Controller used to get user order details
+ * @description get user order details based on userId
+ * @returns OrderList "order fetched successfully"
+ *********************************************************/
+export const getOrderList = asynHandler(async (req, res) => {
+  const userId = req.user._id;
+  const order = await Order.findOne({ user: userId });
+  if (!order) {
+    throw new CustomError("User don't have any order", 404);
+  }
+  res.status(200).json({
+    success: true,
+    message: "user order list fetched successfully",
+    order,
+  });
+});
+
+
+/**********************************************************
+ * @GET_All_ORDERS_LIST
+ * @route https://localhost:5000/api/order/all
+ * @description Controller used to get all users order details
+ * @description get all users order details
+ * @returns OrderList "order fetched successfully"
+ *********************************************************/
+export const getAllOrderList = asynHandler(async (_req, res) => {
+  const order = await Order.find();
+  if (!order) {
+    throw new CustomError("Don't have any orders", 404);
+  }
+  res.status(200).json({
+    success: true,
+    message: "All orders list fetched successfully",
+    order,
+  });
+});
+
+
+
+/**********************************************************
+ * @CHANGE_ORDER_STATUS
+ * @route https://localhost:5000/api/order/status/:orderId
+ * @description Controller used to get change order status
+ * @description changed order status based on orderId
+ * @returns OrderList "order status changed successfully"
+ *********************************************************/
+export const changeOrderStatus = asynHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const {orderStatus} = req.body;
+
+  if (!orderId) {
+    throw new CustomError("Please provide orderId", 400);
+  }
+
+  const order = await Order.findOneAndUpdate(
+    orderId,
+    { orderStatus: orderStatus.toUpperCase() },
+    { new: true }
+  );
+  if (!order) {
+    throw new CustomError("something went wrong", 400);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Order cancelled",
+    order,
+  });
+});
