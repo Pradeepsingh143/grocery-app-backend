@@ -241,7 +241,6 @@ export const getOrderList = asynHandler(async (req, res) => {
   });
 });
 
-
 /**********************************************************
  * @GET_All_ORDERS_LIST
  * @route https://localhost:5000/api/order/all
@@ -261,8 +260,6 @@ export const getAllOrderList = asynHandler(async (_req, res) => {
   });
 });
 
-
-
 /**********************************************************
  * @CHANGE_ORDER_STATUS
  * @route https://localhost:5000/api/order/status/:orderId
@@ -272,7 +269,9 @@ export const getAllOrderList = asynHandler(async (_req, res) => {
  *********************************************************/
 export const changeOrderStatus = asynHandler(async (req, res) => {
   const { orderId } = req.params;
-  const {orderStatus} = req.body;
+  const { orderStatus } = req.body;
+  const userEmail = req.user.email;
+  const userName = req.user.name;
 
   if (!orderId) {
     throw new CustomError("Please provide orderId", 400);
@@ -283,13 +282,81 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
     { orderStatus: orderStatus.toUpperCase() },
     { new: true }
   );
+
+  if (order.orderStatus === OrderStatus.CONFIRMED) {
+    const html = `
+    <p>Dear <strong>${userName}</strong>,</p>
+  
+    <p>We are delighted to inform you that your order has been confirmed and is now being processed for shipping. We wanted to take a moment to thank you for choosing our products and entrusting us with your order.</p>
+  
+    <p>Our team is working diligently to prepare your package for shipping and we anticipate that your order will be shipped within the next [insert estimated shipping time]. You can expect to receive your package shortly after it has been shipped.</p>
+  
+    <p>In the meantime, please feel free to track your order by logging into your account on our website. We will also send you an email with your tracking number as soon as your order has been shipped.</p>
+  
+    <p>If you have any questions or concerns, please don't hesitate to contact us. We are always happy to help.</p>
+  
+    <p>Thank you once again for choosing our products. We hope you enjoy your purchase and look forward to serving you again in the future.</p>
+  
+    <p>Best regards,</p>
+  
+    igniteshark
+    `
+    await mailHelper({
+      email: userEmail,
+      subject: "Order Confirmation - Your Order is on Its Way!",
+      html: html
+    })
+  }
+  if (order.orderStatus === OrderStatus.SHIPPED) {
+    const html = `
+    <p>Dear <strong>${userName}</strong>,</p>
+  
+    <p>We are excited to let you know that your order has been shipped and is on its way to you. You can track your package using the tracking number provided below:</p>
+
+    [Insert Tracking Number Here]
+
+    <p>We hope your package arrives in perfect condition and that you are satisfied with your purchase. If you have any questions or concerns, please do not hesitate to contact us.</p>
+
+    <p>Thank you for choosing our products. We appreciate your business and look forward to serving you again in the future.</p>
+  
+    <p>Best regards,</p>
+  
+    igniteshark
+    `
+    await mailHelper({
+      email: userEmail,
+      subject: "Your Order Has Shipped - Delivery on Its Way!",
+      html: html
+    })
+  }
+  if (order.orderStatus === OrderStatus.DELIVERED) {
+    const html = `
+    <p>Dear <strong>${userName}</strong>,</p>
+  
+    <p>We are delighted to inform you that your order has been delivered. We hope that it arrived in perfect condition and that you are satisfied with your purchase.</p>
+
+    <p>If you have any questions or concerns about your order, please do not hesitate to contact us. We are always happy to help.</p>
+
+    <p>We appreciate your business and look forward to serving you again in the future.</p>
+  
+    <p>Best regards,</p>
+  
+    igniteshark
+    `
+    await mailHelper({
+      email: userEmail,
+      subject: "Your Order Has Been Delivered!",
+      html: html
+    })
+  }
+
   if (!order) {
     throw new CustomError("something went wrong", 400);
   }
 
   res.status(200).json({
     success: true,
-    message: "Order cancelled",
+    message: "Changed order status successfully",
     order,
   });
 });

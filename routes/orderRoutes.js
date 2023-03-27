@@ -15,6 +15,6 @@ router.post("/create", isLoggedIn, createOrder);
 router.get("/user", isLoggedIn, getOrderList);
 router.get("/all", getAllOrderList);
 router.put("/cancel/:orderId", isLoggedIn, cancelOrder);
-router.put("/status/:orderId", isLoggedIn, authorize([AuthRoles.ADMIN]), changeOrderStatus)
+router.put("/status/:orderId", isLoggedIn, authorize([AuthRoles.ADMIN, AuthRoles.MODERATOR]), changeOrderStatus)
 
 export default router;
