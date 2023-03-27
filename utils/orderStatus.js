@@ -1,5 +1,6 @@
 const OrderStatus =  {
-    ORDERED: "ORDERED",
+    PLACED: "PLACED",
+    CONFIRMED: "CONFIRMED",
     SHIPPED: "SHIPPED",
     DELIVERED: "DELIVERED",
     CANCELLED: "CANCELLED",
