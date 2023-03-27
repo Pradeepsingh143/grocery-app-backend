@@ -17,6 +17,8 @@ import cloudinaryImagesRoutes from "./routes/cloudinaryImagesRoutes.js";
 import userProfileRoutes from "./routes/userProfileRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+
 const __dirname = path.resolve();
 
 const app = express();
@@ -55,6 +57,8 @@ app.use("/api/profile", userProfileRoutes);
 app.use("/api/cart", cartRoutes);
 // wishlist routes
 app.use("/api/wishlist", wishlistRoutes);
+// order routes
+app.use("/api/order", orderRoutes);
 
 // unknown routes or 404
 app.use((req, res) => {

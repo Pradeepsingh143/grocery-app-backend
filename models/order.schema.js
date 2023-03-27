@@ -1,22 +1,31 @@
 import mongoose from "mongoose";
 const { Schema, model } = mongoose;
 import OrderStatus from "../utils/orderStatus.js";
+import PaymentStatus from "../utils/paymentStatus.js";
+import PaymentMethod from "../utils/paymentMethod.js";
+import crypto from "crypto";
 
 const orderSchema = Schema(
   {
+    orderId: {
+      type: String,
+      unique: true ,
+    },
     product: {
       type: [
         {
-          product: {
+          productId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "product",
             required: true,
           },
-          qty: Number,
-          required: true,
+          quantity: {
+            type: Number,
+            required: true,
+          },
         },
       ],
-      reuqired: true,
+      required: true,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -53,23 +62,38 @@ const orderSchema = Schema(
       type: Number,
       required: true,
     },
-    isPaid: {
-      type: Boolean,
-      required: true,
-      default: false,
+    paymentStatus: {
+      type: String,
+      emun: Object.values(PaymentStatus),
+      default: PaymentStatus.PENDING,
     },
+    paymentMethod: {
+      type: String,
+      emun: Object.values(PaymentMethod),
+      default: PaymentMethod.COD,
+    },
+    orderStatus: {
+      type: String,
+      enum: Object.values(OrderStatus), // [PLACED, CONFIRMED, SHIPPED, DELIVERED, CANCELLED]
+      default: OrderStatus.PLACED,
+    },
+    tracking: [{ type: mongoose.Schema.Types.ObjectId, ref: "orderTracking" }],
     coupon: String,
     transactionId: String,
-    status: {
-      type: String,
-      emum: Object.values(OrderStatus), // [ORDERED, SHIPPED, DELIVERED, CANCELLED]
-      default: OrderStatus.ORDERED,
-    },
-    tracking: [{ type: mongoose.Types.ObjectId, ref: "orderTracking" }],
   },
   {
     timestamps: true,
   }
 );
+
+orderSchema.pre("save", function (next) {
+  if (!this.isNew) {
+    return next();
+  }
+  const date = new Date().toISOString().slice(0, 10).split("-").join("");
+  const hash = crypto.randomBytes(5).toString('hex');
+  this.orderId = date + hash;
+  next();
+});
 
 export default model("order", orderSchema);
