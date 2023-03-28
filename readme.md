@@ -31,3 +31,65 @@ Overall, the grocery app backend provides a robust and reliable platform for eco
 
 For support, email singhpardeep585@gmail.com or ping me on [linkedin](https://www.linkedin.com/in/wordpress-expert-ecommerece-expert/).
 
+
+## API Reference
+
+### Web Api
+
+#### Authentication
+
+```http
+  POST /api/auth/signup
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `name` | `string` | **Required**. User name |
+| `email` | `string` | **Required**. User email |
+| `password` | `string` | **Required**. User password |
+
+
+```http
+  POST /api/auth/login
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `email` | `string` | **Required**. User email |
+| `password` | `string` | **Required**. User password |
+
+```http
+  POST /api/auth/password/forgot
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `email` | `string` | **Required**. User email |
+
+
+```http
+  POST /api/auth/password/reset/:token
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `password` | `string` | **Required**. User password |
+| `confirmPassword` | `string` | **Required**. confirm user password |
+
+```http
+  POST /api/auth/profile
+```
+
+```http
+  PUT /api/auth/password/change
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `oldPassword` | `string` | **Required**. User old password |
+| `password` | `string` | **Required**. confirm user password |
+| `confirmPassword` | `string` | **Required**. confirm user password |
+
+```http
+  PUT /api/auth/refresh
+```
