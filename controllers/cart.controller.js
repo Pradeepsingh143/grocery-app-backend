@@ -72,7 +72,7 @@ export const addToCart = asyncHandler(async (req, res) => {
       );
 
       if (foundItem) {
-        return { ...item, quantity: cartItems[index].quantity || 1 };
+        return { ...item, quantity: cartItems[index]?.quantity || 1 };
       }
 
       return item;
@@ -90,7 +90,7 @@ export const addToCart = asyncHandler(async (req, res) => {
       newItems.map((cartItem) => {
         return {
           productId: cartItem.productId,
-          quantity: cartItem.quantity || 1,
+          quantity: cartItem?.quantity || 1,
         };
       })
     );

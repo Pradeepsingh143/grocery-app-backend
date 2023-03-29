@@ -67,6 +67,16 @@ export const createOrder = asynHandler(async (req, res) => {
         coupon: coupon,
       });
 
+      try {
+        await order.updateStockAndSold();
+      } catch (error) {
+        order.delete();
+        res.status(error?.code).json({
+          success: false,
+          message: error?.message,
+        });
+      }
+
       await order.populate("product.productId", "name price");
 
       const date = new Date(order.createdAt);
@@ -92,20 +102,19 @@ export const createOrder = asynHandler(async (req, res) => {
       <body>
       <div>
       Dear ${userName},<br>
-      <p>Thank you for placing your order with us! We are pleased to inform you that your order has been successfully placed with the following details:<p><br><br>
+      <p>Thank you for placing your order with us! We are pleased to inform you that your order has been successfully placed with the following details:</p><br>
 
-      <span><strong>Order ID:</strong><span> ${order.orderId}<br>
-      <span><strong>Order Date:</strong><span> ${orderCreatedDate}<br>
+      <span><strong>Order ID:</strong></span> ${order.orderId}<br>
+      <span><strong>Order Date:</strong></span> ${orderCreatedDate}<br>
       <p>Your order details:</p>
       ${order.product.map(
         (item) => `
       <ul>
-        <li class="product">${item.productId.name} - ${item.quantity} x ${item.productId.price} </li><br>
+        <li class="product">${item.productId.name} - ${item.quantity} x ${item.productId.price} </li>
       </ul>
       `
       )}
-      <br>
-      <span>Order Total Price =<span> <strong>${order.totalPrice}</strong>
+      <span>Order Total Price =</span> <strong>${order.totalPrice}</strong>
       <p>Your order will be processed and shipped as soon as possible.<br> We will send you an email with the tracking details once your order has been shipped.</p>
 
       <p>If you have any questions or concerns about your order, please don't hesitate to contact us.</p><br>
@@ -158,6 +167,8 @@ export const createOrder = asynHandler(async (req, res) => {
           transactionId: razorpay._id,
           coupon: coupon,
         });
+
+        await order.updateStockAndSold();
 
         const emailText = `Thanks for placing an order`;
         if (order) {
@@ -300,12 +311,12 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
     <p>Best regards,</p>
   
     igniteshark
-    `
+    `;
     await mailHelper({
       email: userEmail,
       subject: "Order Confirmation - Your Order is on Its Way!",
-      html: html
-    })
+      html: html,
+    });
   }
   if (order.orderStatus === OrderStatus.SHIPPED) {
     const html = `
@@ -322,12 +333,12 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
     <p>Best regards,</p>
   
     igniteshark
-    `
+    `;
     await mailHelper({
       email: userEmail,
       subject: "Your Order Has Shipped - Delivery on Its Way!",
-      html: html
-    })
+      html: html,
+    });
   }
   if (order.orderStatus === OrderStatus.DELIVERED) {
     const html = `
@@ -342,12 +353,12 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
     <p>Best regards,</p>
   
     igniteshark
-    `
+    `;
     await mailHelper({
       email: userEmail,
       subject: "Your Order Has Been Delivered!",
-      html: html
-    })
+      html: html,
+    });
   }
 
   if (!order) {
