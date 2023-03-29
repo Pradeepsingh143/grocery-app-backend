@@ -1,4 +1,5 @@
 
+
 # Grocery app backend
 
 The grocery app backend is built using Node.js, Express, and Mongoose, with JavaScript as the primary programming language. The app is designed to function as an ecommerce platform, providing customers with a seamless shopping experience. The backend includes several key features such as products, orders, carts, wishlists, collections, coupons, order tracking, and reviews.
@@ -68,7 +69,7 @@ For support, email singhpardeep585@gmail.com or ping me on [linkedin](https://ww
 
 
 ```http
-  POST /api/auth/password/reset/:token
+  PUT /api/auth/password/reset/:token
 ```
 
 | Parameter | Type     | Description                |
@@ -77,7 +78,7 @@ For support, email singhpardeep585@gmail.com or ping me on [linkedin](https://ww
 | `confirmPassword` | `string` | **Required**. confirm user password |
 
 ```http
-  POST /api/auth/profile
+  GET /api/auth/profile
 ```
 
 ```http
@@ -91,5 +92,54 @@ For support, email singhpardeep585@gmail.com or ping me on [linkedin](https://ww
 | `confirmPassword` | `string` | **Required**. confirm user password |
 
 ```http
-  PUT /api/auth/refresh
+  GET /api/auth/refresh
+```
+```http
+  GET /api/auth/logout
+```
+
+#### Product Routes
+```http
+  GET /api/product/get/:id
+```
+```http
+  GET /api/product/get
+```
+```http
+  GET /api/product/collection/:id
+```
+```http
+  POST /api/product/create
+```
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `name` | `string` | **Required**. product name |
+| `price` | `number` | **Required**. product price |
+| `Description` | `string` |**Required** product Description |
+| `short Description` | `string` | product short Description |
+| `preview image` | `object` | product preview image |
+| `photos` | `object` | product images |
+| `stock` | `string` |**Required** product stock |
+| `sold` | `string` | product sold |
+| `collectionId(ref)` | `string` | **Required** product collection id |
+| `review(ref)` | `Array` | product review |
+
+```http
+  PUT /api/product/update/:id
+```
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `name` | `string` | **Required**. product name |
+| `price` | `number` | **Required**. product price |
+| `Description` | `string` | product Description |
+| `short Description` | `string` | product short Description |
+| `preview image` | `object` | product preview image |
+| `photos` | `object` | product images |
+| `stock` | `string` | product stock |
+| `sold` | `string` | product sold |
+| `collectionId(ref)` | `string` | product sold |
+| `review(ref)` | `Array` | product sold |
+
+```http
+  DELETE /api/product/delete/:id
 ```
