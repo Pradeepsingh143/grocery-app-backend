@@ -4,7 +4,7 @@ import CustomError from "../utils/customError.js";
 
 /***********************************************************
  * @createCollection
- * @Route http://localhost:4000/api/create/collection
+ * @Route http://localhost:4000/api/collection/create
  * @description create new collection
  * @parameter name
  * @returns success message, collection
@@ -35,7 +35,7 @@ export const createCollection = asyncHandler(async (req, res) => {
 
 /***********************************************************
  * @updateCollection
- * @Route http://localhost:4000/api/update/collection
+ * @Route http://localhost:4000/api/collection/update/:id
  * @description update collection name
  * @parameter id: CollectionId
  * @returns success message, Updatedcollection
@@ -73,7 +73,7 @@ export const updateCollection = asyncHandler(async (req, res) => {
 
 /***********************************************************
  * @deleteCollection
- * @Route http://localhost:4000/api/delete/collection
+ * @Route http://localhost:4000/api/collection/delete/:id
  * @description delete collection
  * @parameter id: CollectionId
  * @returns success message
@@ -99,7 +99,7 @@ export const deleteCollection = asyncHandler(async (req, res) => {
 
 /***********************************************************
  * @getAllCollections
- * @Route http://localhost:4000/api/collections
+ * @Route http://localhost:4000/api/collections/get
  * @description get all collection list
  * @parameter id: CollectionId
  * @returns success message
