@@ -80,7 +80,7 @@ export const createOrder = asynHandler(async (req, res) => {
       await order.populate("product.productId", "name price");
 
       const date = new Date(order.createdAt);
-      const orderCreatedDate = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()} :: ${date.getHours()}:${date.getSeconds()}`;
+      const orderCreatedDate = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()} :: ${date.getHours()}:${date.getMinutes()}`;
       const emailText = `
       <html>
       <head>
@@ -128,6 +128,11 @@ export const createOrder = asynHandler(async (req, res) => {
       </html>
       `;
       if (order) {
+        res.status(200).json({
+          success: true,
+          message: "Order created successfully",
+          order,
+        });
         await mailHelper({
           email: userEmail,
           subject: "Confirmation: Your Order Has Been Successfully Created",
@@ -136,12 +141,6 @@ export const createOrder = asynHandler(async (req, res) => {
       } else {
         throw new CustomError("!Failed, Order not created", 400);
       }
-
-      res.status(200).json({
-        success: true,
-        message: "Order created successfully",
-        order,
-      });
     }
     // pay with razor pay aggrigator
     if (paymentType.toUpperCase() === PaymentMethod.RAZORPAY) {
@@ -168,21 +167,29 @@ export const createOrder = asynHandler(async (req, res) => {
           coupon: coupon,
         });
 
-        await order.updateStockAndSold();
+        try {
+          await order.updateStockAndSold();
+        } catch (error) {
+          order.delete();
+          res.status(error?.code).json({
+            success: false,
+            message: error?.message,
+          });
+        }
 
         const emailText = `Thanks for placing an order`;
         if (order) {
+          res.status(200).json({
+            success: true,
+            message: "Order created successfully",
+            order,
+          });
           await mailHelper({
             email: userEmail,
             subject: "Confirmation: Your Order Has Been Successfully Created",
             text: emailText,
           });
         }
-        res.status(200).json({
-          success: true,
-          message: "Order created successfully",
-          order,
-        });
       }
     }
     // pay with upi
@@ -294,6 +301,15 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
     { new: true }
   );
 
+  if (!order) {
+    throw new CustomError("something went wrong", 400);
+  }
+  res.status(200).json({
+    success: true,
+    message: "Changed order status successfully",
+    order,
+  });
+
   if (order.orderStatus === OrderStatus.CONFIRMED) {
     const html = `
     <p>Dear <strong>${userName}</strong>,</p>
@@ -360,14 +376,4 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
       html: html,
     });
   }
-
-  if (!order) {
-    throw new CustomError("something went wrong", 400);
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Changed order status successfully",
-    order,
-  });
 });
