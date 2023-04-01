@@ -51,6 +51,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
           state: fields?.state,
           country: fields?.country,
         },
+        gender: fields?.gender.toUpperCase(),
         ...fields,
       },
       {
