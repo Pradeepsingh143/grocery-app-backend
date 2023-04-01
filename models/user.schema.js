@@ -48,6 +48,10 @@ const userSchema = Schema(
       state: String,
       country: String,
     },
+    gender: {
+      type: String,
+      enum: ["MALE", "FEMALE", "OTHER"],
+    },
     phoneNumber: Number,
     dateOfBirth: String,
     refreshToken: String,
