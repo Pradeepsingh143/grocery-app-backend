@@ -1,4 +1,5 @@
 import Product from "../models/product.schema.js";
+import Collection from "../models/collection.schema.js";
 import formidable from "formidable";
 import {
   cloudinaryFileUpload,
@@ -7,7 +8,7 @@ import {
 import Mongoose from "mongoose";
 import asyncHandler from "../services/asyncHandler.js";
 import CustomError from "../utils/customError.js";
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from "isomorphic-dompurify";
 
 // import { s3DeleteFile, s3FileUpload } from "../services/s3.files.js";
 // import config from "../config/index.js";
@@ -108,24 +109,138 @@ export const addProduct = asyncHandler(async (req, res) => {
 
       const cleanHtml = DOMPurify.sanitize(fields?.description, {
         ALLOWED_TAGS: [
-          'a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b',
-          'big', 'blockquote', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code',
-          'col', 'colgroup', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'div', 'dl',
-          'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2',
-          'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'i', 'img', 'input', 'ins', 'kbd', 'label',
-          'legend', 'li', 'map', 'mark', 'menu', 'meter', 'nav', 'ol', 'optgroup', 'option',
-          'output', 'p', 'param', 'pre', 'progress', 'q', 's', 'samp', 'section', 'select',
-          'small', 'source', 'span', 'strike', 'strong', 'sub', 'sup', 'table', 'tbody', 'td',
-          'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var',
-          'video', 'wbr'
+          "a",
+          "abbr",
+          "acronym",
+          "address",
+          "area",
+          "article",
+          "aside",
+          "audio",
+          "b",
+          "big",
+          "blockquote",
+          "br",
+          "button",
+          "canvas",
+          "caption",
+          "center",
+          "cite",
+          "code",
+          "col",
+          "colgroup",
+          "datalist",
+          "dd",
+          "del",
+          "details",
+          "dfn",
+          "dialog",
+          "div",
+          "dl",
+          "dt",
+          "em",
+          "embed",
+          "fieldset",
+          "figcaption",
+          "figure",
+          "footer",
+          "form",
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5",
+          "h6",
+          "header",
+          "hr",
+          "i",
+          "img",
+          "input",
+          "ins",
+          "kbd",
+          "label",
+          "legend",
+          "li",
+          "map",
+          "mark",
+          "menu",
+          "meter",
+          "nav",
+          "ol",
+          "optgroup",
+          "option",
+          "output",
+          "p",
+          "param",
+          "pre",
+          "progress",
+          "q",
+          "s",
+          "samp",
+          "section",
+          "select",
+          "small",
+          "source",
+          "span",
+          "strike",
+          "strong",
+          "sub",
+          "sup",
+          "table",
+          "tbody",
+          "td",
+          "textarea",
+          "tfoot",
+          "th",
+          "thead",
+          "time",
+          "tr",
+          "track",
+          "tt",
+          "u",
+          "ul",
+          "var",
+          "video",
+          "wbr",
         ],
         ALLOWED_ATTR: [
-          'align', 'alt', 'border', 'cite', 'class', 'color', 'controls', 'data-*', 'datetime',
-          'dir', 'download', 'height', 'hidden', 'href', 'id', 'lang', 'loop', 'name', 'poster',
-          'preload', 'rel', 'required', 'scoped', 'selected', 'size', 'spellcheck', 'src', 'srcset',
-          'style', 'tabindex', 'title', 'translate', 'type', 'usemap', 'width'
-        ]
-      })
+          "align",
+          "alt",
+          "border",
+          "cite",
+          "class",
+          "color",
+          "controls",
+          "data-*",
+          "datetime",
+          "dir",
+          "download",
+          "height",
+          "hidden",
+          "href",
+          "id",
+          "lang",
+          "loop",
+          "name",
+          "poster",
+          "preload",
+          "rel",
+          "required",
+          "scoped",
+          "selected",
+          "size",
+          "spellcheck",
+          "src",
+          "srcset",
+          "style",
+          "tabindex",
+          "title",
+          "translate",
+          "type",
+          "usemap",
+          "width",
+        ],
+      });
       console.log(cleanHtml);
 
       // create product in db
@@ -422,4 +537,45 @@ export const getProductByCollectionId = asyncHandler(async (req, res) => {
     message: "all product fetched successfully",
     product,
   });
+});
+
+/***********************************************************
+ * @searchHandler
+ * @Route http://localhost:4000/api/product/search/:term/:collection
+ * @description search product by name and collection id
+ * @parameter term, collectionId
+ * @returns success message, product object
+ ***********************************************************/
+export const searchHandler = asyncHandler(async (req, res) => {
+  const { term, collection: name } = req.params;
+  let query = {};
+  if (term !== "") {
+    query.name = { $regex: term, $options: "i" };
+  }
+
+  if (name !== "") {
+    try {
+      const collection = await Collection.findOne({ name: name });
+      console.log("collection", collection);
+      if (collection) {
+        query.collectionId = collection._id;
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server Error" });
+    }
+  }
+  console.log(query);
+
+  try {
+    const products = await Product.find(query).select("previewImage name price shortDescription collectionId").populate("collectionId");
+    res.status(200).json({
+      success: true,
+      message: "search query fetched successfully",
+      products,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
 });
