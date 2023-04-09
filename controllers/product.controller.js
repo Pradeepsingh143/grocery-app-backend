@@ -541,13 +541,14 @@ export const getProductByCollectionId = asyncHandler(async (req, res) => {
 
 /***********************************************************
  * @searchHandler
- * @Route http://localhost:4000/api/product/search/:term/:collection
+ * @Route http://localhost:4000/api/product/search?collection&term
  * @description search product by name and collection id
  * @parameter term, collectionId
  * @returns success message, product object
  ***********************************************************/
 export const searchHandler = asyncHandler(async (req, res) => {
-  const { term, collection: name } = req.params;
+  const { term, collection: name } = req.query
+  
   let query = {};
   if (term !== "") {
     query.name = { $regex: term, $options: "i" };
@@ -556,7 +557,6 @@ export const searchHandler = asyncHandler(async (req, res) => {
   if (name !== "") {
     try {
       const collection = await Collection.findOne({ name: name });
-      console.log("collection", collection);
       if (collection) {
         query.collectionId = collection._id;
       }
@@ -565,7 +565,6 @@ export const searchHandler = asyncHandler(async (req, res) => {
       res.status(500).json({ message: "Server Error" });
     }
   }
-  console.log(query);
 
   try {
     const products = await Product.find(query).select("previewImage name price shortDescription collectionId").populate("collectionId");

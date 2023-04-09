@@ -18,7 +18,7 @@ router.delete("/delete/:id", isLoggedIn, authorize([AuthRoles.ADMIN]), deletePro
 router.get("/get/:id", getProductById);
 router.get("/get", getAllProducts);
 router.get("/collection/:id", getProductByCollectionId);
-router.get("/search/:term/:collection", searchHandler);
+router.get("/search", searchHandler);
 
 
 export default router;
