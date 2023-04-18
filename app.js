@@ -78,12 +78,14 @@ app.use((req, res) => {
 //handle custom error
 app.use((err, _req, res, next) => {
   if (err instanceof CustomError) {
-    res.status(400).json({
+    res.status(err.code || 400).json({
+      ok: false,
       message: err.message,
       code: err.code,
     });
   } else if (err.name === "ValidationError") {
-    res.status(400).json({
+    res.status(err.code || 400).json({
+      ok: false,
       message: err.message,
       code: err.status,
     });

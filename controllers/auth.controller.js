@@ -40,21 +40,28 @@ export const signUp = asyncHandler(async (req, res) => {
     throw new CustomError("!Failed, User not created", 400);
   }
 
-  // const JwtToken = await user.getJwtToken('1d');
-
-  // if (!JwtToken) {
-  //   throw new CustomError("!Jwt failed to generate token", 400);
-  // }
-
-  user.password = undefined;
-
-  // res.cookie("JwtToken", JwtToken, cookieOptions);
-
-  return res.status(200).json({
-    success: true,
-    message: "User registered successfully",
-    user,
-  });
+  try {
+    // refresh token for short period ex. 10min
+    const accessToken = await user.getJwtToken(
+      config.JWT_ACCESS_TOKEN_EXPIRY
+    );
+    // access token for long time ex. 2day
+    const refreshToken = await user.getJwtToken(
+      config.JWT_REFRESH_TOKEN_EXPIRY
+    );
+    user.refreshToken = refreshToken;
+    await user.save({validateBeforeSave:false});
+    res.cookie("JwtToken", refreshToken, cookieOptions);
+    user.password = undefined;
+    return res.status(200).json({
+      success: true,
+      message: "User registered successfully",
+      accessToken,
+      user,
+    });
+  } catch (error) {
+    throw new CustomError(`Something went wrong: ${error?.message}`, 400);
+  }
 });
 
 /***********************************************************
@@ -90,7 +97,6 @@ export const login = asyncHandler(async (req, res) => {
       const refreshToken = await user.getJwtToken(
         config.JWT_REFRESH_TOKEN_EXPIRY
       );
-      console.log('refreshtoken: ',refreshToken);
       user.refreshToken = refreshToken;
       await user.save({validateBeforeSave:false});
       res.cookie("JwtToken", refreshToken, cookieOptions);
