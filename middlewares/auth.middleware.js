@@ -4,7 +4,7 @@ import CustomError from "../utils/customError.js";
 import config from "../config/index.js";
 import asyncHandler from "../services/asyncHandler.js";
 
-export const isLoggedIn = asyncHandler(async (req, _res, next) => {
+export const isLoggedIn = asyncHandler(async (req, res, next) => {
   let JwtToken;
 
   if (
@@ -24,6 +24,7 @@ export const isLoggedIn = asyncHandler(async (req, _res, next) => {
     req.user = await User.findById(decodedJwtToken._id, "name email role _id");
     next();
   } catch (error) {
+    res.clearCookie("JwtToken");
     throw new CustomError("Token expired or invalid", 401);
   }
 });
