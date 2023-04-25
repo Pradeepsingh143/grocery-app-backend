@@ -14,13 +14,18 @@ const productReviewSchema = Schema(
       ref: "user",
       require: true,
     },
+    orderId: {
+      type: Schema.Types.ObjectId,
+      ref: "order",
+      require: true,
+    },
     rating: {
       type: Number,
       required: true,
       min: 1,
       max: 5
     },
-    review: {
+    message: {
       type: String,
       required: true,
       trim: true

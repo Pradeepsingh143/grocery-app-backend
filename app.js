@@ -19,6 +19,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 const __dirname = path.resolve();
 
@@ -62,6 +63,8 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/order", orderRoutes);
 // contact routes
 app.use("/api/contact", contactRoutes);
+// review routes
+app.use("/api/review", reviewRoutes);
 
 // unknown routes or 404
 app.use((req, res) => {
