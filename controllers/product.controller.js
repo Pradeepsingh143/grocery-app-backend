@@ -39,7 +39,7 @@ export const addProduct = asyncHandler(async (req, res) => {
       // check fields
       if (
         !fields.name ||
-        !fields.price ||
+        !fields.mrp ||
         !fields.description ||
         !fields.collectionId ||
         !fields.stock
@@ -241,13 +241,16 @@ export const addProduct = asyncHandler(async (req, res) => {
           "width",
         ],
       });
-      console.log(cleanHtml);
 
       // create product in db
       const product = await Product.create({
         _id: productID,
         photos: imageArray,
         previewImage: previewImage,
+        price: {
+          mrp: fields.mrp,
+          salePrice: fields?.salePrice
+        },
         ...fields,
         // description: cleanHtml,
       });
@@ -389,13 +392,16 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
       const dirtyHtml = fields?.description;
       const cleanHtml = DOMPurify.sanitize(dirtyHtml);
-      console.log(cleanHtml);
 
       // create product in db
       const updatedProduct = await Product.findByIdAndUpdate(
         productId,
         {
           photos: [...product.photos, ...imageArray],
+          price: {
+            mrp: fields?.mrp,
+            salePrice: fields?.salePrice
+          },
           ...updatedFields,
           // description: cleanHtml,
           previewImage:
@@ -526,12 +532,8 @@ export const getProductById = asyncHandler(async (req, res) => {
  ***********************************************************/
 export const getProductByCollectionId = asyncHandler(async (req, res) => {
   const { id: collectionId } = req.params;
-  const product = await Product.find({ collectionId });
-
-  if (product.length === 0) {
-    throw new CustomError("Product not found", 404);
-  }
-
+  const product = await Product.find({ collectionId }, "price previewImage name collectionId")
+    .populate("collectionId", "name")
   res.status(200).json({
     success: true,
     message: "all product fetched successfully",
@@ -547,8 +549,8 @@ export const getProductByCollectionId = asyncHandler(async (req, res) => {
  * @returns success message, product object
  ***********************************************************/
 export const searchHandler = asyncHandler(async (req, res) => {
-  const { term, collection: name } = req.query
-  
+  const { term, collection: name } = req.query;
+
   let query = {};
   if (term !== "") {
     query.name = { $regex: term, $options: "i" };
@@ -567,7 +569,9 @@ export const searchHandler = asyncHandler(async (req, res) => {
   }
 
   try {
-    const products = await Product.find(query).select("previewImage name price shortDescription collectionId").populate("collectionId");
+    const products = await Product.find(query)
+      .select("previewImage name price shortDescription collectionId")
+      .populate("collectionId");
     res.status(200).json({
       success: true,
       message: "search query fetched successfully",
