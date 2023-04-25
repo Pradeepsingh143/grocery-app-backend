@@ -123,31 +123,27 @@ export const login = asyncHandler(async (req, res) => {
  ***********************************************************/
 export const refreshToken = asyncHandler(async (req, res) => {
   const cookies = req.cookies;
-  if (!cookies?.JwtToken) return res.sendStatus(401);
+  if (!cookies?.JwtToken) return new CustomError("token invlaid", 403);
   const refreshToken = cookies.JwtToken;
   // Is refreshToken in db?
   const user = await User.findOne({ refreshToken }, "_id role email name");
   if (!user) {
-    res.clearCookie("JwtToken", cookieOptions);
-    return res.status(405).json({
-      success: false,
-      message: "token invalid",
-    });
+    res.clearCookie("JwtToken");
+    return new CustomError("token invalid", 403)
   }
 
   let decodedJwtToken = JWT.verify(refreshToken, config.JWT_SECRET);
 
   if (!decodedJwtToken && decodedJwtToken?._id !== user?._id) {
-    return res.status(403).json({
-      success: false,
-      message: "token invalid",
-    });
+    res.clearCookie("JwtToken");
+    return new CustomError("token invalid", 403)
   }
 
   // generate access token
   const accessToken = await user.getJwtToken(config.JWT_ACCESS_TOKEN_EXPIRY);
 
-  if (!accessToken) return res.sendStatus(407);
+  if (!accessToken) return new CustomError("Token generation failed!", 403)
+  
   res.status(200).json({
     success: true,
     message: "access token generated",
@@ -168,17 +164,17 @@ export const refreshToken = asyncHandler(async (req, res) => {
 export const logout = asyncHandler(async (req, res) => {
   const cookies = req.cookies;
   if (!cookies?.JwtToken) {
-    return res.sendStatus(204); //No content
+    return new CustomError("You are not logged in", 204) //No content
   }
   const refreshToken = cookies.JwtToken;
   // Is refreshToken in db?
   const user = await User.findOne({ refreshToken }).exec();
   if (!user) {
-    res.clearCookie("JwtToken", cookieOptions);
-    return res.sendStatus(204);
-  }
+    res.clearCookie("JwtToken");
+    return new CustomError("Not valid user", 204)
+  }    
 
-  // Delete refreshToken in db
+  // Delete refreshToken in db   
   user.refreshToken = "";
   await user.save();
   res.clearCookie("JwtToken");
