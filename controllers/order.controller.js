@@ -39,7 +39,8 @@ export const createOrder = asynHandler(async (req, res) => {
 
     //total amount and final amount
     const totalAmount = userCart.items.reduce(
-      (total, product) => total + product.productId.price * product.quantity,
+      (total, product) =>
+        total + product.productId.price.salePrice * product.quantity,
       0
     );
 
@@ -110,7 +111,7 @@ export const createOrder = asynHandler(async (req, res) => {
       ${order.product.map(
         (item) => `
       <ul>
-        <li class="product">${item.productId.name} - ${item.quantity} x ${item.productId.price} </li>
+        <li class="product">${item.productId.name} - ${item.quantity} x ${item.productId.price.salePrice} </li>
       </ul>
       `
       )}
@@ -292,11 +293,18 @@ export const changeOrderStatus = asynHandler(async (req, res) => {
   const userName = req.user.name;
 
   if (!orderId) {
-    throw new CustomError("Please provide orderId", 400);
+    throw new CustomError("Please provide an orderId", 400);
+  }
+
+  if (orderStatus === OrderStatus.DELIVERED) {
+    throw new CustomError(
+      "Order status can't be changed it's already delivered",
+      400
+    );
   }
 
   const order = await Order.findOneAndUpdate(
-    orderId,
+    { orderId: orderId },
     { orderStatus: orderStatus.toUpperCase() },
     { new: true }
   );
