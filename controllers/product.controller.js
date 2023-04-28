@@ -249,7 +249,7 @@ export const addProduct = asyncHandler(async (req, res) => {
         previewImage: previewImage,
         price: {
           mrp: fields.mrp,
-          salePrice: fields?.salePrice
+          salePrice: fields?.salePrice,
         },
         ...fields,
         // description: cleanHtml,
@@ -400,7 +400,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
           photos: [...product.photos, ...imageArray],
           price: {
             mrp: fields?.mrp,
-            salePrice: fields?.salePrice
+            salePrice: fields?.salePrice,
           },
           ...updatedFields,
           // description: cleanHtml,
@@ -532,8 +532,10 @@ export const getProductById = asyncHandler(async (req, res) => {
  ***********************************************************/
 export const getProductByCollectionId = asyncHandler(async (req, res) => {
   const { id: collectionId } = req.params;
-  const product = await Product.find({ collectionId }, "price previewImage name collectionId")
-    .populate("collectionId", "name")
+  const product = await Product.find(
+    { collectionId },
+    "price previewImage name collectionId"
+  ).populate("collectionId", "name");
   res.status(200).json({
     success: true,
     message: "all product fetched successfully",
@@ -580,5 +582,58 @@ export const searchHandler = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
+  }
+});
+
+/***********************************************************
+ * @getFeaturedProducts
+ * @Route http://localhost:4000/api/product/featured
+ * @description get feature product
+ * @parameter
+ * @returns success message, product object
+ ***********************************************************/
+export const getFeaturedProducts = asyncHandler(async (req, res) => {
+  try {
+    const products = await Product.aggregate([
+      {
+        $match: {
+          stock: { $gt: 0 },
+        },
+      },
+      {
+        $sort: {
+          sold: -1,
+          createdAt: -1,
+        },
+      },
+      {
+        $lookup: {
+          from: "reviews",
+          localField: "_id",
+          foreignField: "productId",
+          as: "reviews",
+        },
+      },
+      {
+        $match: {
+          "reviews.0": { $exists: true }, // only show products with at least 2 reviews
+        },
+      },
+      {
+        $limit: 4,
+      },
+    ]);
+    console.log(products);
+    return res.status(200).json({
+      success: true,
+      message: "featured product fetched successfully",
+      products,
+    });
+  } catch (error) {
+    console.log(error);
+    throw new CustomError(
+      error?.message || "someThing went wrong fetching featured products",
+      500
+    );
   }
 });
