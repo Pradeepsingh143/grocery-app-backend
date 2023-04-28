@@ -63,27 +63,10 @@ const productSchema = Schema(
       ref: "collection",
       required: true,
     },
-    reviews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "review",
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
-
-productSchema.post("remove", async function (next) {
-  try {
-    const productId = this._id;
-    await Review.deleteMany({ product: productId });
-    next();
-  } catch (err) {
-    console.error(err);
-    next(err);
-  }
-})
 
 export default model("product", productSchema);

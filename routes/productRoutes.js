@@ -7,7 +7,8 @@ import {
   getProductById,
   updateProduct,
   getProductByCollectionId,
-  searchHandler
+  searchHandler,
+  getFeaturedProducts
 } from "../controllers/product.controller.js";
 import AuthRoles from "../utils/authRoles.js";
 const router = express.Router();
@@ -17,6 +18,7 @@ router.put("/update/:id", isLoggedIn, authorize([AuthRoles.ADMIN]), updateProduc
 router.delete("/delete/:id", isLoggedIn, authorize([AuthRoles.ADMIN]), deleteProduct);
 router.get("/get/:id", getProductById);
 router.get("/get", getAllProducts);
+router.get("/featured/get", getFeaturedProducts);
 router.get("/collection/:id", getProductByCollectionId);
 router.get("/search", searchHandler);
 
