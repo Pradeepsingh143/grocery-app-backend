@@ -16,10 +16,11 @@ import OrderStatus from "../utils/orderStatus.js";
 
 export const addReview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { productId, rating, message } = req.body;
+  const { productId, rating, orderId, message } = req.body;
 
   const order = await Order.findOne({
     'product.productId': mongoose.Types.ObjectId(productId),
+    orderId: orderId,
     user: mongoose.Types.ObjectId(userId),
     orderStatus: OrderStatus.DELIVERED
   }).select("_id orderId")
@@ -40,18 +41,12 @@ export const addReview = asyncHandler(async (req, res) => {
 
   try {
     const review = await Review.create({
-      product: productId,
+      productId,
       user: userId,
       orderId: order._id,
       rating,
       message,
     });
-
-    await Product.findOneAndUpdate(
-        { _id: mongoose.Types.ObjectId(productId) }, 
-        { $push: { reviews: mongoose.Types.ObjectId(review._id) } },
-        { new: true }, 
-    )
 
     return res.status(200).json({
       success: true,
