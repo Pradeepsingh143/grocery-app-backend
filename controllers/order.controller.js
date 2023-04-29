@@ -249,7 +249,7 @@ export const cancelOrder = asynHandler(async (req, res) => {
  *********************************************************/
 export const getOrderList = asynHandler(async (req, res) => {
   const userId = req.user._id;
-  const order = await Order.findOne({ user: userId });
+  const order = await Order.find({ user: userId });
   if (!order) {
     throw new CustomError("User don't have any order", 404);
   }
