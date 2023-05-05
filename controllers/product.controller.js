@@ -596,14 +596,119 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
   try {
     const products = await Product.aggregate([
       {
+        $lookup: {
+          from: "reviews",
+          localField: "_id",
+          foreignField: "productId",
+          as: "reviews",
+        },
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: "$reviews.rating" },
+          isNew: {
+            $gte: [
+              "$createdAt",
+              new Date(Date.now() - 24 * 60 * 60 * 1000 * 5),
+            ], // product is new if it was created within the last 24 hours
+          },
+          isTopSeller: {
+            $gt: ["$sold", 5], // product is top seller if it has sold more than 10 units
+          },
+          isDiscounted: {
+            $lt: ["$price.salePrice", "$price.mrp"], // product is discounted if sale price is less than mrp
+          },
+          discountPercentage: {
+            $round: [
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      {
+                        $subtract: ["$price.mrp", "$price.salePrice"],
+                      },
+                      "$price.mrp",
+                    ],
+                  },
+                  100,
+                ],
+              },
+              2,
+            ],
+          },
+        },
+      },
+      {
         $match: {
           stock: { $gt: 0 },
+          "reviews.0": { $exists: true }, // only show products with at least 1 reviews
+          averageRating: { $gt: 4.5 },
         },
       },
       {
         $sort: {
           sold: -1,
           createdAt: -1,
+        },
+      },
+      {
+        $limit: 4,
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          price: 1,
+          previewImage: 1,
+          reviews: {
+            _id: 1,
+            rating: 1,
+          },
+          isNew: 1,
+          isTopSeller: 1,
+          isDiscounted: 1,
+          discountPercentage: 1,
+          averageRating: 1,
+          specialDiscount: 1,
+        },
+      },
+    ]);
+    return res.status(200).json({
+      success: true,
+      message: "featured product fetched successfully",
+      products,
+    });
+  } catch (error) {
+    console.log(error);
+    throw new CustomError(
+      error?.message || "someThing went wrong fetching featured products",
+      500
+    );
+  }
+});
+
+
+/***********************************************************
+ * @getBestDealOfWeek
+ * @Route http://localhost:4000/api/deals/get
+ * @description get best deal product
+ * @parameter
+ * @returns success message, product object
+ ***********************************************************/
+export const getBestDealOfWeek = asyncHandler(async (req, res) => {
+  // Get the current date and time
+  const now = new Date();
+
+  // Use the Mongoose aggregation pipeline to join the products collection with the deals collection,
+  // filter and sort the results based on valid deals for the current week, and return the top 10 products
+  try {
+    const products = await Product.aggregate([
+      {
+        $lookup: {
+          from: "deals",
+          localField: "_id",
+          foreignField: "productId",
+          as: "deals",
         },
       },
       {
@@ -615,15 +720,77 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
         },
       },
       {
-        $match: {
-          "reviews.0": { $exists: true }, // only show products with at least 2 reviews
+        $unwind: "$deals",
+      },
+      {
+        $unwind: "$reviews"
+      },
+      {
+        $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          description: {$first: "$shortDescription"},
+          price: { $first: "$price" },
+          previewImage: { $first: "$previewImage"},
+          deal: { $max: "$deals" },
+          reviews: { $push: "$reviews" },
+          stock: { $first: "$stock" },
+          averageRating: { $avg: "$reviews.rating" },
         },
       },
       {
-        $limit: 4,
+        $match: {
+          "deal.expiryDate": { $gt: now },
+          "deal.discount": { $gt: 10 },
+          stock: { $gt: 0 },
+          "reviews.0": { $exists: true },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          price: 1,
+          reviews: {
+            $map: {
+              input: "$reviews",
+              as: "review",
+              in: {
+                _id: "$$review._id",
+                rating: "$$review.rating",
+              },
+            },
+          },
+          previewImage: 1,
+          averageRating: 1,
+          specialDiscount: "$deal.discount",
+          // discountedPrice: {
+          //   $multiply: [
+          //     "$price.salePrice",
+          //     {
+          //       $subtract: [1, { $divide: ["$deal.discount", 100] }]
+          //     }
+          //   ]
+          // },
+          expiryDate: "$deal.expiryDate",
+        },
+      },
+      {
+        $sort: { specialDiscount: -1 },
+      },
+      {
+        $limit: 8,
       },
     ]);
-    console.log(products);
+    
+    if (!products) {
+      return res.status(200).json({
+        success: true,
+        message: "No product founded",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "featured product fetched successfully",
@@ -632,7 +799,7 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
   } catch (error) {
     console.log(error);
     throw new CustomError(
-      error?.message || "someThing went wrong fetching featured products",
+      error?.message || "Something went wrong while getting best deals",
       500
     );
   }
