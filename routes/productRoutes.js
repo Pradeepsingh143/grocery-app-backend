@@ -8,7 +8,8 @@ import {
   updateProduct,
   getProductByCollectionId,
   searchHandler,
-  getFeaturedProducts
+  getFeaturedProducts,
+  getBestDealOfWeek
 } from "../controllers/product.controller.js";
 import AuthRoles from "../utils/authRoles.js";
 const router = express.Router();
@@ -19,6 +20,7 @@ router.delete("/delete/:id", isLoggedIn, authorize([AuthRoles.ADMIN]), deletePro
 router.get("/get/:id", getProductById);
 router.get("/get", getAllProducts);
 router.get("/featured/get", getFeaturedProducts);
+router.get("/deals/get", getBestDealOfWeek);
 router.get("/collection/:id", getProductByCollectionId);
 router.get("/search", searchHandler);
 
