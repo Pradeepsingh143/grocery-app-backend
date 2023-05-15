@@ -42,16 +42,19 @@ export const signUp = asyncHandler(async (req, res) => {
 
   try {
     // refresh token for short period ex. 10min
-    const accessToken = await user.getJwtToken(
-      config.JWT_ACCESS_TOKEN_EXPIRY
-    );
+    const accessToken = await user.getJwtToken(config.JWT_ACCESS_TOKEN_EXPIRY);
     // access token for long time ex. 2day
     const refreshToken = await user.getJwtToken(
       config.JWT_REFRESH_TOKEN_EXPIRY
     );
     user.refreshToken = refreshToken;
-    await user.save({validateBeforeSave:false});
+    await user.save({ validateBeforeSave: false });
     res.cookie("JwtToken", refreshToken, cookieOptions);
+    res.cookie("isLogin", true, {
+      expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      sameSite: "None",
+      secure: true,
+    });
     user.password = undefined;
     return res.status(200).json({
       success: true,
@@ -60,6 +63,8 @@ export const signUp = asyncHandler(async (req, res) => {
       user,
     });
   } catch (error) {
+    res.clearCookie("JwtToken");
+    res.clearCookie("isLogin");
     throw new CustomError(`Something went wrong: ${error?.message}`, 400);
   }
 });
@@ -73,7 +78,7 @@ export const signUp = asyncHandler(async (req, res) => {
  ***********************************************************/
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, persist } = req.body;
 
   if (!(email && password)) {
     throw new CustomError("All fields are required", 400);
@@ -98,8 +103,18 @@ export const login = asyncHandler(async (req, res) => {
         config.JWT_REFRESH_TOKEN_EXPIRY
       );
       user.refreshToken = refreshToken;
-      await user.save({validateBeforeSave:false});
+      await user.save({ validateBeforeSave: false });
       res.cookie("JwtToken", refreshToken, cookieOptions);
+      res.cookie("isLogin", true, {
+        expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        sameSite: "None",
+        secure: true,
+      });
+      res.cookie("persist", persist, {
+        expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        sameSite: "None",
+        secure: true,
+      });
       user.password = undefined;
       return res.status(200).json({
         success: true,
@@ -108,6 +123,9 @@ export const login = asyncHandler(async (req, res) => {
         user,
       });
     } catch (error) {
+      res.clearCookie("JwtToken");
+      res.clearCookie("isLogin");
+      res.clearCookie("persist");
       throw new CustomError(`Something went wrong: ${error?.message}`, 400);
     }
   }
@@ -129,27 +147,31 @@ export const refreshToken = asyncHandler(async (req, res) => {
   const user = await User.findOne({ refreshToken }, "_id role email name");
   if (!user) {
     res.clearCookie("JwtToken");
-    return new CustomError("token invalid", 403)
+    res.clearCookie("isLogin");
+    res.clearCookie("persist");
+    return new CustomError("token invalid", 403);
   }
 
   let decodedJwtToken = JWT.verify(refreshToken, config.JWT_SECRET);
 
   if (!decodedJwtToken && decodedJwtToken?._id !== user?._id) {
     res.clearCookie("JwtToken");
-    return new CustomError("token invalid", 403)
+    res.clearCookie("isLogin");
+    res.clearCookie("persist");
+    return new CustomError("token invalid", 403);
   }
 
   // generate access token
   const accessToken = await user.getJwtToken(config.JWT_ACCESS_TOKEN_EXPIRY);
 
-  if (!accessToken) return new CustomError("Token generation failed!", 403)
-  
+  if (!accessToken) return new CustomError("Token generation failed!", 403);
+
   res.status(200).json({
     success: true,
     message: "access token generated",
     accessToken,
     role: user.role,
-    user
+    user,
   });
 });
 
@@ -164,20 +186,24 @@ export const refreshToken = asyncHandler(async (req, res) => {
 export const logout = asyncHandler(async (req, res) => {
   const cookies = req.cookies;
   if (!cookies?.JwtToken) {
-    return new CustomError("You are not logged in", 204) //No content
+    return new CustomError("You are not logged in", 204); //No content
   }
   const refreshToken = cookies.JwtToken;
   // Is refreshToken in db?
   const user = await User.findOne({ refreshToken }).exec();
   if (!user) {
     res.clearCookie("JwtToken");
-    return new CustomError("Not valid user", 204)
-  }    
+    res.clearCookie("isLogin");
+    res.clearCookie("persist");
+    return new CustomError("Not valid user", 204);
+  }
 
-  // Delete refreshToken in db   
+  // Delete refreshToken in db
   user.refreshToken = "";
   await user.save();
   res.clearCookie("JwtToken");
+  res.clearCookie("isLogin");
+  res.clearCookie("persist");
   res.status(200).json({
     success: true,
     message: "logged out",
