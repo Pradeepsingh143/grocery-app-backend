@@ -116,8 +116,6 @@ export const addToCart = asyncHandler(async (req, res) => {
 export const removeCartItem = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const cart = await Cart.findOne({ userId: req.user._id });
-  console.log(cart);
-
   // remove cart item using filter method
   const updatedCartArray = cart.items.filter(
     (item) => item.productId.toString() !== productId.toString()
