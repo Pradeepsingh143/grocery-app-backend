@@ -1,6 +1,6 @@
 import Order from "../models/order.schema.js";
+import Deal from "../models/deal.schema.js";
 import Cart from "../models/cart.schema.js";
-
 import Coupon from "../models/coupon.schema.js";
 import RazorPayInstance from "../config/razorpay.config.js";
 import CustomError from "../utils/customError.js";
@@ -35,14 +35,31 @@ export const createOrder = asynHandler(async (req, res) => {
       throw new CustomError("No product in your cart", 400);
     }
 
+    const productIds = userCart.items.map((item) => item.productId._id);
+    const deals = await Deal.find({
+      productId: { $in: productIds },
+      expiryDate: { $gte: new Date() },
+    });
+
     let finalAmount;
 
     //total amount and final amount
-    const totalAmount = userCart.items.reduce(
-      (total, product) =>
-        total + product.productId.price.salePrice * product.quantity,
-      0
-    );
+    const totalAmount = userCart.items.reduce((total, product) => {
+      const productPrice = product.productId.price.salePrice;
+      const deal =
+        deals &&
+        deals.find(
+          (discount) =>
+            String(discount.productId) === String(product.productId._id)
+        );
+      if (deal) {
+        const discount = deal.discount;
+        const totalAmount = total + productPrice * product.quantity;
+        return totalAmount - (totalAmount * discount) / 100;
+      } else {
+        return total + productPrice * product.quantity;
+      }
+    }, 0);
 
     // coupon check - DB
     if (coupon) {
@@ -55,7 +72,7 @@ export const createOrder = asynHandler(async (req, res) => {
         );
       }
     } else {
-      finalAmount = totalAmount;
+      finalAmount = Math.floor(totalAmount);
     }
 
     // cash on delivery
@@ -207,6 +224,7 @@ export const createOrder = asynHandler(async (req, res) => {
     console.log(
       `Error finding products: ${error.message || "product not found"}`
     );
+    throw new CustomError(error.message || "Error occur while creating order");
   }
 });
 
@@ -252,6 +270,36 @@ export const getOrderList = asynHandler(async (req, res) => {
   const order = await Order.find({ user: userId });
   if (!order) {
     throw new CustomError("User don't have any order", 404);
+  }
+  res.status(200).json({
+    success: true,
+    message: "user order list fetched successfully",
+    order,
+  });
+});
+
+/**********************************************************
+ * @GET_USER_ORDERS_LIST_PRODUCT_ID
+ * @route https://localhost:5000/api/order/get/:productId
+ * @description Controller used to get user order details by product ID
+ * @description get user order details based on userId and product Id
+ * @returns OrderList "order fetched successfully"
+ *********************************************************/
+export const getOrderListByProductId = asynHandler(async (req, res) => {
+  const userId = req.user._id;
+  const productId = req.params.productId;
+  const order = await Order.find({
+    user: userId,
+    product: {
+      $elemMatch: {
+        productId: productId,
+      },
+    },
+    orderStatus: OrderStatus.DELIVERED
+  }, "orderId createdAt updatedAt")
+
+  if (order.length === 0) {
+    throw new CustomError("you don't have any order for this product", 404);
   }
   res.status(200).json({
     success: true,
