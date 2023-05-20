@@ -8,6 +8,10 @@ const couponSchema = Schema(
       required: [true, "please provide coupon name"],
       unique: true,
     },
+    productId: {
+      type: Schema.Types.ObjectId,
+      ref: "product"
+    },
     discount: {
       type: Number,
       default: 0,
