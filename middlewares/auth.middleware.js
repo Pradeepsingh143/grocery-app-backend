@@ -25,6 +25,7 @@ export const isLoggedIn = asyncHandler(async (req, res, next) => {
     next();
   } catch (error) {
     res.clearCookie("JwtToken");
+    res.clearCookie("isLogin")
     throw new CustomError("Token expired or invalid", 401);
   }
 });
