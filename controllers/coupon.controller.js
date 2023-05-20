@@ -10,7 +10,7 @@ import CustomError from "../utils/customError.js";
  * @returns Coupon Object with success message "Coupon Created SuccessFully"
  *********************************************************/
 export const addCoupon = asyncHandler(async (req, res) => {
-  const { code, discount } = req.body;
+  const { code, discount, productId } = req.body;
 
   if (!(code && discount)) {
     throw new CustomError("Coupon code is required", 400);
@@ -29,6 +29,7 @@ export const addCoupon = asyncHandler(async (req, res) => {
   const coupon = await Coupon.create({
     code,
     discount: discountInNumber,
+    productId: productId,
   });
 
   res.status(200).json({
