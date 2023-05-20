@@ -1,5 +1,4 @@
 import Review from "../models/review.schema.js";
-import Product from "../models/product.schema.js";
 import Order from "../models/order.schema.js";
 import asyncHandler from "../services/asyncHandler.js";
 import CustomError from "../utils/customError.js";
@@ -17,6 +16,10 @@ import OrderStatus from "../utils/orderStatus.js";
 export const addReview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { productId, rating, orderId, message } = req.body;
+
+  if (!(productId && rating && orderId && message)) {
+    throw new CustomError("All fields are required", 401)
+  }
 
   const order = await Order.findOne({
     'product.productId': mongoose.Types.ObjectId(productId),
@@ -36,7 +39,7 @@ export const addReview = asyncHandler(async (req, res) => {
   }).select("_id rating message")
 
   if (review) {
-     throw new CustomError("You already submited an review", 405);
+     throw new CustomError("You already submited an review for this order", 405);
   }
 
   try {
@@ -61,3 +64,27 @@ export const addReview = asyncHandler(async (req, res) => {
     );
   }
 });
+
+
+/***********************************************************
+ * @getReview
+ * @Route http://localhost:4000/api/review/get/id
+ * @description get reviews by productId
+ * @parameter productId, rating, message
+ * @returns success message, review object
+ ***********************************************************/
+export const getReviewById = asyncHandler(async(req, res)=>{
+    const {id: productId} = req.params;
+
+    try {
+      const reviews = await Review.find({productId: productId}, "rating message user createdAt").populate("user", "-_id name")
+      return res.status(200).json({
+        success: true,
+        message: "review fetched successfully",
+        reviews
+      })
+    } catch (error) {
+      console.log(error);
+      throw new CustomError(error.message || "something went wrong while getting reviews by product")
+    }
+})
