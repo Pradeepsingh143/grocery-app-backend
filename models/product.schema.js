@@ -63,6 +63,18 @@ const productSchema = Schema(
       ref: "collection",
       required: true,
     },
+    seo: {
+      title: {
+        type: String,
+        trim: true,
+        maxLength: [70, "title does not contain more than 70 characters"]
+      },
+      meta_description: {
+        type: String,
+        trim: true,
+        maxLength: [170, "meta description does not contain more than 170 characters"]
+      }
+    }
   },
   {
     timestamps: true,
