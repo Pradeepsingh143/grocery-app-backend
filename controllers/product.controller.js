@@ -9,6 +9,7 @@ import Mongoose from "mongoose";
 import asyncHandler from "../services/asyncHandler.js";
 import CustomError from "../utils/customError.js";
 import DOMPurify from "isomorphic-dompurify";
+import mongoose from "mongoose";
 
 // import { s3DeleteFile, s3FileUpload } from "../services/s3.files.js";
 // import config from "../config/index.js";
@@ -398,10 +399,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
         productId,
         {
           photos: [...product.photos, ...imageArray],
-          price: {
-            mrp: fields?.mrp,
-            salePrice: fields?.salePrice,
-          },
           ...updatedFields,
           // description: cleanHtml,
           previewImage:
@@ -482,11 +479,68 @@ export const deleteProduct = asyncHandler(async (req, res) => {
  * @returns success message, product object
  ***********************************************************/
 export const getAllProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find(
-    {},
-    "_id name stock previewImage price createdAt sold shortDescription"
-  ).populate("collectionId", "name");
-
+  const pipeline = [
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "productId",
+        as: "reviews",
+      },
+    },
+    {
+      $addFields: {
+        averageRating: { $avg: "$reviews.rating" },
+        isNew: {
+          $gte: [
+            "$createdAt",
+            new Date(Date.now() - 24 * 60 * 60 * 1000 * 5),
+          ],
+        },
+        isTopSeller: {
+          $gt: ["$sold", 5],
+        },
+        isDiscounted: {
+          $lt: ["$price.salePrice", "$price.mrp"],
+        },
+        discountPercentage: {
+          $round: [
+            {
+              $multiply: [
+                {
+                  $divide: [
+                    {
+                      $subtract: ["$price.mrp", "$price.salePrice"],
+                    },
+                    "$price.mrp",
+                  ],
+                },
+                100,
+              ],
+            },
+            2,
+          ],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        price: 1,
+        previewImage: 1,
+        isNew: 1,
+        isTopSeller: 1,
+        isDiscounted: 1,
+        discountPercentage: 1,
+        averageRating: 1,
+        collectionId: 1,
+        createdAt: 1,
+        shortDescription: 1,
+      },
+    },
+  ];
+  const products = await Product.aggregate([...pipeline]);
   if (!products) {
     throw new CustomError("No product found", 404);
   }
@@ -507,20 +561,108 @@ export const getAllProducts = asyncHandler(async (req, res) => {
  ***********************************************************/
 export const getProductById = asyncHandler(async (req, res) => {
   const { id: productId } = req.params;
-  const product = await Product.findById(productId).populate(
-    "collectionId",
-    "name"
-  );
+  const now = new Date();
+  try {
+    const product = await Product.aggregate([
+      { $match: { _id: mongoose.Types.ObjectId(productId) } },
+      {
+        $lookup: {
+          from: "collections",
+          localField: "collectionId",
+          foreignField: "_id",
+          as: "collections",
+        },
+      },
+      {
+        $lookup: {
+          from: "deals",
+          localField: "_id",
+          foreignField: "productId",
+          as: "deals",
+        },
+      },
+      {
+        $unwind: "$collections",
+      },
+      {
+        $unwind: {
+          path: "$deals",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          seo: { $first: "$seo" },
+          name: { $first: "$name" },
+          price: { $first: "$price" },
+          description: { $first: "$description" },
+          shortDescription: { $first: "$shortDescription" },
+          previewImage: { $first: "$previewImage" },
+          photos: { $first: "$photos" },
+          deal: { $first: "$deals" },
+          collection: { $first: "$collections" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          price: 1,
+          description: 1,
+          shortDescription: 1,
+          previewImage: 1,
+          photos: 1,
+          collection: {
+            _id: 1,
+            name: 1,
+          },
+          seo: 1,
+          deal: {
+            discountPrice: {
+              $round: [
+                {
+                  $subtract: [
+                    "$price.salePrice",
+                    {
+                      $multiply: [
+                        "$price.salePrice",
+                        { $divide: ["$deal.discount", 100] },
+                      ],
+                    },
+                  ],
+                },
+                2,
+              ],
+            },
+            isExpired: { $lt: ["$deal.expiryDate", now] },
+            expiryDate: "$deal.expiryDate",
+            discount: "$deal.discount",
+          },
+        },
+      },
+    ]);
 
-  if (!product) {
-    throw new CustomError("Product not found", 404);
+    if (!product) {
+      throw new CustomError("Product not found", 404);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "all product fetched successfully",
+      product: product[0],
+    });
+  } catch (error) {
+    console.log(error);
+    throw new CustomError(
+      error?.message || "something went wrong while fetching product data"
+    );
   }
 
-  res.status(200).json({
-    success: true,
-    message: "all product fetched successfully",
-    product,
-  });
+  // const product = await Product.findById(productId).populate(
+  //   "collectionId",
+  //   "name"
+  // );
 });
 
 /***********************************************************
@@ -665,6 +807,7 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
             rating: 1,
           },
           isNew: 1,
+          shortDescription: 1,
           isTopSeller: 1,
           isDiscounted: 1,
           discountPercentage: 1,
@@ -686,7 +829,6 @@ export const getFeaturedProducts = asyncHandler(async (req, res) => {
     );
   }
 });
-
 
 /***********************************************************
  * @getBestDealOfWeek
@@ -723,15 +865,15 @@ export const getBestDealOfWeek = asyncHandler(async (req, res) => {
         $unwind: "$deals",
       },
       {
-        $unwind: "$reviews"
+        $unwind: "$reviews",
       },
       {
         $group: {
           _id: "$_id",
           name: { $first: "$name" },
-          description: {$first: "$shortDescription"},
+          description: { $first: "$shortDescription" },
           price: { $first: "$price" },
-          previewImage: { $first: "$previewImage"},
+          previewImage: { $first: "$previewImage" },
           deal: { $max: "$deals" },
           reviews: { $push: "$reviews" },
           stock: { $first: "$stock" },
@@ -741,7 +883,7 @@ export const getBestDealOfWeek = asyncHandler(async (req, res) => {
       {
         $match: {
           "deal.expiryDate": { $gt: now },
-          "deal.discount": { $gt: 10 },
+          "deal.discount": { $gt: 5 },
           stock: { $gt: 0 },
           "reviews.0": { $exists: true },
         },
@@ -765,14 +907,6 @@ export const getBestDealOfWeek = asyncHandler(async (req, res) => {
           previewImage: 1,
           averageRating: 1,
           specialDiscount: "$deal.discount",
-          // discountedPrice: {
-          //   $multiply: [
-          //     "$price.salePrice",
-          //     {
-          //       $subtract: [1, { $divide: ["$deal.discount", 100] }]
-          //     }
-          //   ]
-          // },
           expiryDate: "$deal.expiryDate",
         },
       },
@@ -783,7 +917,7 @@ export const getBestDealOfWeek = asyncHandler(async (req, res) => {
         $limit: 8,
       },
     ]);
-    
+
     if (!products) {
       return res.status(200).json({
         success: true,
