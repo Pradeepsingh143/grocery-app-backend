@@ -11,7 +11,7 @@ import Wishlist from "../models/wishlist.schema.js";
  ***********************************************************/
 export const getUserWishlist = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const wishlist = await Wishlist.findOne({ userId: userId });
+  const wishlist = await Wishlist.findOne({ userId: userId }, "items").populate("items.productId", " _id price previewImage name collectionId");
   res.status(200).json({
     success: true,
     message: "user wishlist fetched successfully",
@@ -28,10 +28,10 @@ export const getUserWishlist = asyncHandler(async (req, res) => {
  ***********************************************************/
 export const addToWishlist = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { items: wishlistItems } = req.body;
+  const { productId } = req.body;
 
-  if (!wishlistItems) {
-    throw new CustomError("wishlist Items not found", 404);
+  if (!productId) {
+    throw new CustomError("productId not founded", 404);
   }
 
   const userExistingWishlist = await Wishlist.findOne({ userId: userId });
@@ -39,7 +39,9 @@ export const addToWishlist = asyncHandler(async (req, res) => {
   if (!userExistingWishlist) {
     const wishlist = await Wishlist.create({
       userId: userId,
-      items: wishlistItems,
+      items: [{
+        productId
+      }],
     });
 
     if (!wishlist) {
@@ -52,47 +54,19 @@ export const addToWishlist = asyncHandler(async (req, res) => {
       wishlist,
     });
   } else {
-    let itemAlreadyInWishlist = false;
-    let updateWishlist = await userExistingWishlist.items.map((item) => {
-      const foundedItem = wishlistItems.find(
-        (wishlistItem) =>
-          wishlistItem.productId.toString() === item.productId.toString()
-      );
-
-      if (foundedItem) {
-        itemAlreadyInWishlist: true
-      }
-      return item;
-    });
-
-    let addNewItem = wishlistItems.filter(
-      (wishlistItem) =>
-        !userExistingWishlist.items
-          .map((item) => item.productId.toString())
-          .includes(wishlistItem.productId.toString())
-    );
-
-    updateWishlist = updateWishlist.concat(
-      addNewItem.map((wishlistItem) => {
-        return {
-          productId: wishlistItem.productId,
-        };
-      })
-    );
-
-    userExistingWishlist.items = updateWishlist;
-    const updatedWishlist = await userExistingWishlist.save();
-    if (itemAlreadyInWishlist) {
+    const itemAlreadyExist = userExistingWishlist.items.find((item)=> item.productId.toString() === productId.toString())
+    if (!itemAlreadyExist) {
+      const addedWishlist = userExistingWishlist.items.concat({productId: productId});
+      userExistingWishlist.items = addedWishlist
+      const updatedWishlist = await userExistingWishlist.save({ new: true })
       res.status(200).json({
-        success: true,
-        message: "item already added in your wishlist",
-      });
+        message: "item added",
+        updatedWishlist
+      })
     } else {
       res.status(200).json({
-        success: true,
-        message: "wishlist successfully updated",
-        updatedWishlist,
-      });
+        message: "item already exist in wishlist"
+      })
     }
   }
 });
@@ -107,8 +81,8 @@ export const addToWishlist = asyncHandler(async (req, res) => {
 export const removeWishlistItem = asyncHandler(async (req, res) => {
   const { productId: itemId } = req.params;
   const wishlist = await Wishlist.findOneAndUpdate(
-    { "items._id": itemId },
-    { $pull: { items: { _id: itemId } } },
+    { "items.productId": itemId },
+    { $pull: { items: { productId: itemId } } },
     { new: true }
   );
 
